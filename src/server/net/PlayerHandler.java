@@ -9,6 +9,7 @@ import java.util.StringJoiner;
 import common.MsgType;
 import java.nio.ByteBuffer;
 import java.nio.channels.SocketChannel;
+import java.util.concurrent.ForkJoinPool;
 import server.controller.Controller;
 
 
@@ -16,7 +17,7 @@ import server.controller.Controller;
  *
  * @author yuchen
  */
-public class PlayerHandler {
+public class PlayerHandler implements Runnable {
     private final HangmanServer server;
     private final SocketChannel playerChannel;
     private final Controller contr;
@@ -60,12 +61,14 @@ public class PlayerHandler {
                         joiner.add("lose");
                         joiner.add(contr.getWord());
                         server.broadcast(MsgType.ENDGAME + "##" + joiner.toString());
-                        new Thread (()->{ server.startGame(); }).start();
+                        //new Thread (()->{ server.startGame(); }).start();
+                        ForkJoinPool.commonPool().execute(this);
                     } else if(right) {
                         joiner.add(Integer.toString(contr.score()));
                         joiner.add("win");
                         server.broadcast(MsgType.ENDGAME + "##" + joiner.toString());
-                        new Thread (()->{ server.startGame(); }).start();
+                        //new Thread (()->{ server.startGame(); }).start();
+                        ForkJoinPool.commonPool().execute(this);
                     }
                     System.out.println(guess);
                     break;
@@ -82,6 +85,11 @@ public class PlayerHandler {
                     System.out.println("Command:" + msg.receivedString + "is not known.");
             }
         }
+    }
+    
+    @Override
+    public void run() {
+        server.startGame();
     }
     
     void sendHistory (String msg) {
